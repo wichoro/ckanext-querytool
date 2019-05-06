@@ -37,9 +37,9 @@ Example usage:
   {% set domain = domain|replace("http://", "")|replace("https://", "") %}
   {% set attrs = {'data-module': 'slug-preview-slug', 'data-module-prefix': domain, 'data-module-placeholder': '<application>', 'class': 'form-control input-sm'} %}
 
-  {{ form.prepend('name', id='field-name', label=_('URL'), prepend=prefix, placeholder=_('eg. my-querytool'), value=data.name, error=errors.name, attrs=attrs, is_required=true) }}
+  {{ form.prepend('name', id='field-name', label=_('URL'), prepend=prefix, placeholder=_('eg. my-application'), value=data.name, error=errors.name, attrs=attrs, is_required=true) }}
 
-  {{ form.markdown('description', id='field-description', label=_('Display Title and Description'), placeholder=_('eg. Some useful description about the query tool'), value=data.description, error=errors.description) }}
+  {{ form.markdown('description', id='field-description', label=_('Display Title and Description'), placeholder=_('eg. Some useful description about the application'), value=data.description, error=errors.description) }}
 
   <div class="control-group">
     <label for="field-group" class="control-label">{{ _('Public Folder') }}</label>
