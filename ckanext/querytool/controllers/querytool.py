@@ -561,7 +561,7 @@ class QueryToolController(base.BaseController):
             try:
                 junk = _get_action('querytool_visualizations_update',
                                    _visualization_items)
-                h.flash_success(_('Visualizations Successfully updated.'))
+                h.flash_success(_('Visualizations successfully updated.'))
             except ValidationError, e:
                 errors = e.error_dict
                 error_summary = e.error_summary
