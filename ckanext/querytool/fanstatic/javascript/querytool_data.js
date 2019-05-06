@@ -83,6 +83,7 @@
             var selectFilterValue = item.find('[id*=data_filter_value_]');
             var inputFilterAlias = item.find('[id*=data_filter_alias_]');
             var selectFilterVisibility = item.find('[id*=data_filter_visibility_]');
+            var inputFilterColor = item.find('[id*=data_filter_color_]');
 
             item.attr('id', 'filter_item_' + order);
 
@@ -97,6 +98,9 @@
 
             selectFilterVisibility.attr('id', 'data_filter_visibility_' + order);
             selectFilterVisibility.attr('name', 'data_filter_visibility_' + order);
+
+            inputFilterColor.attr('id', 'data_filter_color_' + order);
+            inputFilterColor.attr('name', 'data_filter_color_' + order);
 
         });
     };
@@ -380,7 +384,7 @@
                             $(e.target).closest('.filter_item').remove();
                             _handleFilterItemsOrder();
                         });
-                        
+
                         handleRenderedFilters(total_items, resource_id);
                         jscolor.installByClassName("jscolor");
 
@@ -454,10 +458,11 @@
                             response.result.forEach(function(item, i) {
                                 var columnId = _uuidv4();
                                 var element = [
-                                    '<li class="checkbox-marked">',
-                                    '<input name="y_axis_column_' + columnId + '" id="y_axis_column_' + columnId + '" type="checkbox" value="' + item + '" />',
-                                    '<label for="y_axis_column_' + columnId + '">' + item + '</label>',
-                                    '</li>'
+                                    '<div class="control-group control-checkbox-group">',
+                                      '<input name="y_axis_name_' + columnId + '" id="y_axis_name_' + columnId + '" type="checkbox" value="' + item + '" />',
+                                      '<label class="control-label" for="y_axis_name_' + columnId + '">' + item + '</label>',
+                                      '<input name="y_axis_alias_' + columnId + '" id="y_axis_alias_' + columnId + '" type="text" placeholder="Optional label" value="">',
+                                    '</div>'
                                 ].join('');
 
                                 yAxisColumnsResults.append(element);

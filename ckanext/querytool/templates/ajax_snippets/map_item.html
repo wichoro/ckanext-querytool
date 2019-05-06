@@ -18,7 +18,8 @@
       <select id="map_resource_{{ n }}" name="map_resource_{{ n }}" required=required>
       <option value="">&mdash; {{ _('Select map resource') }} &mdash;</option>
       {% for resource in resources %}
-        <option value="{{ resource.value }}" {% if map %}{{ 'selected' if resource.value == map.map_resource }}{% endif %} >{{resource.text}}</option>
+        {% set isSelected = map and h.querytool_get_dataset_url_path(map.map_resource) == h.querytool_get_dataset_url_path(resource.value) %}
+        <option value="{{ resource.value }}" {% if isSelected  %}selected{% endif %} >{{resource.text}}</option>
       {% endfor %}
       </select>
     </div>
@@ -75,9 +76,11 @@
     <label class="control-label" for="map_color_scheme_{{ n }}">{{ _('Color scheme') }}</label>
     <div class="controls ">
       <select id="map_color_scheme_{{ n }}" name="map_color_scheme_{{ n }}">
-      {% for color in color_schemes %}
-        <option value="{{ color.value }}" {% if map %}{{ 'selected' if color.value == map.map_color_scheme }}{% endif %}>{{ color.text }}</option>
-      {% endfor %}
+          <optgroup label="Diverging">
+          {% for color in color_schemes %}
+            <option value="{{ color.value }}" {% if map %}{{ 'selected' if color.value == map.map_color_scheme }}{% endif %}>{{ color.text }}</option>
+          {% endfor %}
+          </optgroup>
       </select>
     </div>
   </div>
@@ -113,11 +116,11 @@
   </div>
 
   <div id="map_div_filter_alias_{{ n }}" class="control-group {{ class }}">
-    <label class="control-label" for="map_field_filter_alias_{{ n }}">{{ _('Filter alias') }}</label>
+    <label class="control-label" for="map_field_filter_alias_{{ n }}">{{ _('Filter Label') }}</label>
     <div class="controls ">
       <input id="map_field_filter_alias_{{ n }}" name="map_field_filter_alias_{{ n }}"
            {% if map and map.filter_alias %}value="{{map.filter_alias}}"{% else %}value=""{% endif %}
-           placeholder="{{ _('Enter filter alias') }}" type="text">
+           placeholder="{{ _('Enter filter label') }}" type="text">
     </div>
   </div>
 
@@ -163,6 +166,7 @@
   {% snippet 'ajax_snippets/map_module.html',
     map_config=map_config,
     n=n,
+    measure_label = measure_label,
     map_resource=map_resource,
     map_title_field=map_title_field,
     map_key_field=map_key_field,

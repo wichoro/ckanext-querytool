@@ -114,6 +114,7 @@ ckan.module('querytool-map', function($) {
             this.options.map_key_field = this.mapKeyField.val();
             this.options.data_key_field = this.dataKeyField.val();
             this.options.y_axis_column = this.valueField.val();
+            this.options.measure_label = $('#choose_y_axis_column option:selected').text();
             this.options.map_color_scheme = this.mapColorScheme.val();
             this.options.filter_name = this.mapFilterName.val();
             this.options.filter_value = this.mapFilterValue.val();
@@ -239,7 +240,7 @@ ckan.module('querytool-map', function($) {
             this.info.update = function (infoData) {
                 this._div.innerHTML = '<h4></h4>' +  (infoData ?
                       options.map_title_field + ': ' + '<b>' + infoData.title + '</b><br/>'
-                     + options.y_axis_column + ': ' + '<b>' + infoData.measure + '</b>' : '');
+                     + options.measure_label + ': ' + '<b>' + infoData.measure + '</b>' : '');
             };
 
             this.info.addTo(this.map);
@@ -258,7 +259,8 @@ ckan.module('querytool-map', function($) {
 
             var parsedSqlString = this.options.sql_string.split('*');
             var sqlStringExceptSelect = parsedSqlString[1];
-
+            // We need to encode some characters, eg, '+' sign:
+            sqlStringExceptSelect = sqlStringExceptSelect.replace('+', '%2B');
             var filter_name = (this.options.filter_name === true) ? '' : this.options.filter_name;
             var filter_value = (this.options.filter_value === true) ? '' : this.options.filter_value;
 

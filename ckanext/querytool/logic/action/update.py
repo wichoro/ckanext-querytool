@@ -4,7 +4,6 @@ import ckan.logic as logic
 import ckan.lib.navl.dictization_functions as df
 from ckan.plugins import toolkit
 import ckan.lib.uploader as uploader
-
 from ckanext.querytool.logic import schema
 from ckanext.querytool.model import CkanextQueryTool, table_dictize,\
                                     CkanextQueryToolVisualizations
@@ -24,8 +23,6 @@ def querytool_update(context, data_dict):
     :param chart_resource
     :param y_axis_columns
     '''
-
-    check_access('querytool_update', context)
 
     # we need the querytool name in the context for name validation
     context['querytool'] = data_dict['querytool']
@@ -55,7 +52,7 @@ def querytool_update(context, data_dict):
         querytool = CkanextQueryTool()
 
     items = ['title', 'description', 'name', 'private', 'type', 'group',
-             'dataset_name',
+             'dataset_name', 'owner_org',
              'filters', 'sql_string', 'related_querytools',
              'chart_resource',
              'y_axis_columns']
@@ -75,8 +72,6 @@ def querytool_visualizations_update(context, data_dict):
     :param visualizations
     :param
     '''
-
-    check_access('querytool_update', context)
 
     session = context['session']
     # data, errors = df.validate(data_dict, schema.querytool_schema(),

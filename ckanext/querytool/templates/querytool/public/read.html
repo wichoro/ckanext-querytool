@@ -1,16 +1,15 @@
 {% resource 'querytool/vendor/c3/c3.css' %}
 {% resource 'querytool/vendor/d3/d3.js' %}
 {% resource 'querytool/vendor/c3/c3.js' %}
-{% resource 'querytool/vendor/save-svg-png.js' %}
 {% resource 'querytool/vendor/canvas2image.js' %}
 {% resource 'querytool/vendor/html2canvas.js' %}
-{% resource 'querytool/javascript/modules/export-to-png.js' %}
+{% resource 'querytool/vendor/nunjucks.js' %}
 {% resource "querytool/javascript/public_query.js" %}
 {% resource 'querytool/javascript/modules/viz-preview.js' %}
-{% resource 'querytool/javascript/modules/tool-embed.js' %}
 
 {% resource 'querytool/map' %}
 {% resource 'querytool/table' %}
+{% resource 'querytool/share' %}
 
 {% import 'macros/form.html' as form %}
 {% extends "querytool/public/base_main.html" %}
@@ -43,22 +42,19 @@
   <div class="public-query">
     {% if querytools %}
       {% for querytool in querytools %}
-        {% set y_axis_columns = querytool.y_axis_columns.split(',') %}
+        {% set y_axis_columns = h.querytool_parse_y_axis_columns(querytool.y_axis_columns) %}
         {% if querytool.y_axis_column %}
           {% set y_axis_selected = querytool.y_axis_column %}
        {% endif %}
-    <div class="controls">
+    <div class="controls" id="{{ querytool.name }}">
       <div class="flex filters-wrap">
         <div class="filters">
           {% if querytool.public_filters  %}
+            {% set show_arrow = False %}
             {% for filter in querytool.public_filters %}
-              {% if filter.visibility == 'public'  %}
-                {% set public_filter_id = h.querytool_get_uuid() %}
-                {% snippet 'ajax_snippets/public_filter_item.html', id=public_filter_id, q_name=querytool.name, n=filter.order, selected_filter=filter %}
-              {% else %}
-                {% set public_filter_id = h.querytool_get_uuid() %}
-                {% snippet 'ajax_snippets/public_filter_item.html', id=public_filter_id, q_name=querytool.name, n=filter.order, selected_filter=filter, class='hidden' %}
-              {% endif %}
+              {% set public_filter_id = h.querytool_get_uuid() %}
+              {% snippet 'ajax_snippets/public_filter_item.html', id=public_filter_id, q_name=querytool.name, n=filter.order, selected_filter=filter, visibility=filter.visibility, show_arrow=show_arrow %}
+              {% set show_arrow = show_arrow or filter.visibility == 'public' %}
             {% endfor %}
           {% endif %}
           <input type="hidden" class="field_resource_id" value="{{ querytool.chart_resource }}"/>
@@ -71,7 +67,7 @@
           {% else %}
             <select id="{{querytool.name}}_y_axis_column" name="{{querytool.name}}_y_axis_column" class="filter-item filter-item-column input-block-level">
             {% for y_axis in y_axis_columns %}
-              <option value="{{ y_axis }}" {{ 'selected' if y_axis == y_axis_selected }}>{{ y_axis }}</option>
+              <option value="{{ y_axis.name }}" {{ 'selected' if y_axis.name == y_axis_selected }}>{{ y_axis.alias or y_axis.name }}</option>
             {% endfor %}
             </select>
           {% endif %}
@@ -90,27 +86,30 @@
                   {% set xml = '?format=xml'%}
                   {% set json = '?format=json'%}
                   {% set xlsx = '?format=xlsx'%}
+                  {% set sql_query = '&sql_string=' + querytool.sql_string | replace('+', '%2B') %}
                   <ul class="dropdown-menu">
                     <li>
-                      <a href="{{ download_url }}{{ csv }}">CSV</a>
+                      <a href="{{ download_url }}{{ csv }}{{ sql_query }}">CSV</a>
                     </li>
                     <li>
-                      <a href="{{ download_url }}{{ xml }}">XML</a>
+                      <a href="{{ download_url }}{{ xml }}{{ sql_query }}">XML</a>
                     </li>
                     <li>
-                      <a href="{{ download_url }}{{ json }}">JSON</a>
+                      <a href="{{ download_url }}{{ json }}{{ sql_query }}">JSON</a>
                     </li>
                     <li>
-                      <a href="{{ download_url }}{{ xlsx }}">Microsoft Excel (OpenXML)</a>
+                      <a href="{{ download_url }}{{ xlsx }}{{ sql_query }}">Microsoft Excel (OpenXML)</a>
                     </li>
                   </ul>
                 </div>
           </div>
-          <button type="submit" class="btn btn-large btn-success btn-update"><span class="fa fa-refresh"></span> {{ _('Update') }}</button>
+          <button type="submit" class="btn btn-large btn-success btn-update" data-anchor="{{ querytool.name }}"><span class="fa fa-refresh"></span> {{ _('Update') }}</button>
       </div>
     </div>
     <!-- Visualizations container -->
     <div class="visualizations">
+      {% set measure = h.querytool_pick_first_by_attr_value(h.querytool_parse_y_axis_columns(querytool.y_axis_columns), 'name', y_axis_selected, default={}) %}
+      {% set measure_label = measure.alias or measure.name %}
       {% for item in querytool.visualizations %}
         {% set chart_id = h.querytool_get_uuid() %}
       <div class="item {{ item.size }} {{ item.type }} chart-{{chart_id}} {% if item.filter_visibility == 'public'  %}has-filter{% endif %}">
@@ -127,8 +126,8 @@
               resource_id=querytool.chart_resource
             %}
           {% endif %}
-          <a class="btn-chart-download" data-module="export-to-png" data-module-id="chart-{{chart_id}}">
-             <i class="fa fa-picture-o fa-lg" aria-hidden="true" title="{{ _('Download image') }}" data-name="{{ item.title }}"></i>
+          <a class="btn-chart-download" data-module="export-to-png" data-module-id="chart-{{chart_id}}" data-module-type="{{item.graph}}">
+             <i class="fa fa-download fa-lg" aria-hidden="true" title="{{ _('Download image') }}" data-name="{{ item.title }}"></i>
            </a>
           {% snippet 'ajax_snippets/visualization_item.html',
             type='chart',
@@ -141,6 +140,7 @@
             show_legend = item.show_legend,
             x_text_rotate= item.x_text_rotate,
             x_text_multiline= item.x_text_multiline,
+            x_tick_culling_max = item.x_tick_culling_max,
             tooltip_name = item.tooltip_name,
             data_format = item.data_format,
             y_tick_format = item.y_tick_format,
@@ -150,12 +150,21 @@
             padding_top = item.padding_top,
             tick_count = item.tick_count,
             show_labels = item.show_labels,
+            show_labels_as_percentages = item.show_labels_as_percentages,
             y_label = item.y_label,
+            y_label_hide = item.y_label_hide,
+            y_from_zero = item.y_from_zero,
             query_filters = querytool.public_main_filters,
             filter_name = item.filter_name,
             filter_value = item.filter_value,
             category_name = item.category_name,
-            data_sort = item.sort
+            data_sort = item.sort,
+            measure_label = measure_label,
+            static_reference_columns = item.static_reference_columns,
+            static_reference_label = item.static_reference_label,
+            dynamic_reference_type = item.dynamic_reference_type,
+            dynamic_reference_factor = item.dynamic_reference_factor,
+            dynamic_reference_label = item.dynamic_reference_label
           %}
         {% endif %}
         {% if item.type == 'text_box' %}
@@ -165,7 +174,7 @@
         {% endif %}
         {% if item.type == 'image' %}
           <div class="item-content" >
-            <img src="{{ item.url }}">
+            <img src="{{ item.url }}" class="html2canvas-ignore">
           </div>
         {% endif %}
         {% if item.type == 'map'  %}
@@ -195,6 +204,7 @@
             map_color_scheme=item.map_color_scheme,
             sql_string=querytool.sql_string,
             y_axis_column=y_axis_selected,
+            measure_label = measure_label,
             filter_name=item.filter_name,
             filter_value=item.filter_value
           %}
@@ -218,7 +228,10 @@
             sql_string = querytool.sql_string,
             resource_id=querytool.chart_resource,
             y_axis = y_axis_selected,
+            measure_label = measure_label,
             main_value = item.main_value,
+            category_name = item.category_name,
+            data_format = item.data_format,
             filter_name=item.filter_name,
             filter_value=item.filter_value,
             table_title = item.title

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -
+import re
 import logging
 import json
 import uuid
 import urllib
 import requests
+import functools32
 
 try:
     # CKAN 2.7 and later
@@ -132,12 +134,10 @@ def get_chart_types():
         {'text': _('Stacked bar'), 'value': 'sbar'},
         {'text': _('Stacked horizontal bar'), 'value': 'shbar'},
         {'text': _('Area'), 'value': 'area'},
-        {'text': _('Stacked area'), 'value': 'area-spline'},
         {'text': _('Spline'), 'value': 'spline'},
         {'text': _('Donut'), 'value': 'donut'},
         {'text': _('Pie'), 'value': 'pie'},
-        {'text': _('Scatter'), 'value': 'scatter'},
-        {'text': _('Bubble'), 'value': 'bscatter'}
+        {'text': _('Scatter'), 'value': 'scatter'}
     ]
     return chart_types
 
@@ -147,51 +147,24 @@ def get_color_scheme():
     Get color schemes for displaying the charts
     :return:
     '''
-    colors = [{'value': '#B80000, #995522, #556677, #118888, #115588, '
-              '#4C3D3D, #2B2B2B, #660000, #221100',
-               'text': _('Saturated')},
-              {'value': '#DDBBAA, #79E6F2, #88AA99, #00A864, #228899, '
-                        '#3F797F, #775555, #118855, #008751, #3D4C46',
-               'text': _('Light')},
-              {'value': '#ADC0D8, #79AFF2, #8899AA, #0EAAB2, #00A0A8, '
-                        '#776655, #118888, #885511, #3F5C7F, #225599',
-               'text': _('Pastel')},
-              {'value': '#ADB1D8, #8899AA, #7983F2, #777752, #887711, '
-                        '#0070C0, #0062A8, #3F457F, #115588, #3D464C',
-               'text': _('Pastel 2')},
-              {'value': '#AA9988, #A88600, #779922, #6C7F3F, #887711, '
-                        '#555577, #665500, #665100, #4C493D, #2B2B2V',
-               'text': _('Contrast')},
-              {'value': '#b9fff2, #6cdeff, #00a3d3, #00778d, #006351, '
-                        '#b9fff5, #6cdeff, #01a3d3, #02778d, #006389',
-               'text': _('Ocean')},
-              {'value': '#6EF752, #75F070, #8ADBC2, #85E0AD, #80E699, '
-                        '#7DE88F, #7AEB85,  #70F55C, #6BFA47, #66FF33',
-               'text': _('Limes')},
-              {'value': '#2f1313, #451611, #60191c, #6f1a31, #890a3e, '
-                        '#BD4587, #CC4C80,  #DB5478, #EB5C70, #FF6666',
-               'text': _('Dark cherry')},
-              {'value': '#eba7ff, #ff7878, #e057ff, #de47ff, #890a3e, '
-                        '#B866FF, #8F66FF,  #5C66FF, #5266FF, #3366FF',
-               'text': _('Purple')},
-              {'value': '#1f2439, #e4f714, #114ee8, #e4e4e4, #000000, '
-                        '#cc885b, #321108,  #6c3b2c, #94b0a4, #d6b5a4',
-               'text': _('Urban')},
-              {'value': '#ff3366, #00ff99, #33cccc, #ffff66, #993399, '
-                        '#f3c6f2, #efa6b6,  #bd98e0, #8d90e2, #7554ae',
-               'text': _('Candy')},
-              {'value': '#22758e, #b63b3b, #f9c414, #e3e8e6, #4c4555, '
-                        '#d53c3c, #80add3,  #97cfcc, #e4b03d, #c39de0',
-               'text': _('Orient')},
-              {'value': '#3b5998, #8b9dc3, #dfe3ee, #f7f7f7, #ffffff, '
-                        '#011f4b, #03396c, #005b96, #6497b1, #6497b1',
+    colors = [{'value': '#59a14f',
+               'text': _('Green')},
+              {'value': '#4e79a7',
                'text': _('Blue')},
-              {'value': '#ffb3ba, #ffdfba, #ffffba, #baffc9, #bae1ff, '
-                        '#ee4035, #f37736, #fdf498, #7bc043, #0392cf',
-               'text': _('Rainbow')},
-              {'value': '#2e4045, #83adb5, #c7bbc9, #5e3c58, #bfb5b2, '
-                        '#a69eb0, #efeff2, #f2e2cd, #dadae3, #000000',
-               'text': _('Muted')}
+              {'value': '#499894',
+               'text': _('Teal')},
+              {'value': '#b6992d',
+               'text': _('Golden')},
+              {'value': '#ffa600',
+               'text': _('Yellow')},
+              {'value': '#d87c26',
+               'text': _('Orange')},
+              {'value': '#9d7660',
+               'text': _('Brown')},
+              {'value': '#78549a',
+               'text': _('Purple')},
+              {'value': '#b2182b',
+               'text': _('Red')}
               ]
 
     return colors
@@ -202,11 +175,28 @@ def get_map_color_scheme():
     Get color schemes for displaying the maps
     :return:
     '''
-    colors = [{'value': '#feedde,#fdbe85,#fd8d3c,#e6550d,#a63603',
-               'text': _('Sequential')},
-              {'value': '#d7191c,#fdae61,#ffffbf,#a6d96a,#1a9641',
-               'text': _('Diverging')}
-              ]
+    colors = [
+        {
+            'value': '#feedde,#fdbe85,#fd8d3c,#e6550d,#a63603',
+            'text': _('Sequential reds')
+        },
+        {
+            'value': '#7b3294,#c2a5cf,#EFD9CE,#a6dba0,#008837',
+            'text': _('Green-Purple')
+        },
+        {
+            'value': '#d7191c,#fdae61,#ffffbf,#abdda4,#2b83ba',
+            'text': _('Blue-Red')
+        },
+        {
+            'value': '#a6611a,#dfc27d,#FCD0A1,#80cdc1,#018571',
+            'text': _('Teal-Brown')
+        },
+        {
+            'value': '#e66101,#fdb863,#EFD9CE,#b2abd2,#5e3c99',
+            'text': _('Purple-Orange')
+        }
+    ]
 
     return colors
 
@@ -235,13 +225,20 @@ def get_charts_data_formats(num=None):
                {'text': _('Decimal (2 digit) e.g 2.50'), 'value': '.2f'},
                {'text': _('Decimal (3 digit) e.g 2.501'), 'value': '.3f'},
                {'text': _('Decimal (4 digit) e.g 2.5012'), 'value': '.4f'},
-               {'text': _('Dolar e.g 2000$'), 'value': '$'},
+               {'text': _('Currency e.g. $2,000'), 'value': '$'},
                {'text': _('Rounded e.g 2k'), 'value': 's'},
-               {'text': _('Percentage (multiply by 100) e.g 200000%'),
-                'value': '.0%'},
-               {'text': _('Comma (thousands separator) e.g 2,000'),
-                'value': ','},
-               {'text': _('Binary e.g 11111010000'), 'value': 'b'}]
+               {'text': _('Percentage (0 digit) e.g 25% for 0.25'),
+                   'value': '.0%'},
+               {'text': _('Percentage (1 digit) e.g 25.1% for 0.251'),
+                   'value': '.1%'},
+               {'text': _('Percentage (2 digit) e.g 25.12% for 0.2512'),
+                   'value': '.2%'},
+               {'text': _('Comma thousands separator (0 digit) e.g 2,512'),
+                   'value': ',.0f'},
+               {'text': _('Comma thousands separator (1 digit) e.g 2,512.3'),
+                   'value': ',.1f'},
+               {'text': _('Comma thousands separator (2 digit) e.g 2,512.34'),
+                   'value': ',.2f'}]
     if num:
         return options[:num]
     return options
@@ -259,19 +256,19 @@ def get_visualization_size():
     Get available sizes for displaying visualizations: charts, text box
     :return:
     '''
-    options = [{'text': _('Small Rectangle'), 'value': 'size-sm'},
-               {'text': _('Long Small Rectangle'), 'value': 'size-sm wide'},
-               {'text': _('Small Square'), 'value': 'size-sm square'},
-               {'text': _('Horizontal Double Small Square'),
-                'value': 'size-sm double square'},
-               {'text': _('Large Rectangle'), 'value': 'size-lg'},
-               {'text': _('Extra Large Rectangle'), 'value': 'size-xl'},
-               {'text': _('Large Square'), 'value': 'size-lg square'},
-               {'text': _('Vertical Double Small Square'),
-                'value': 'size-sm vertical'},
-               {'text': _('Large Vertical'), 'value': 'size-lg vertical'},
-               {'text': _('Extra Large Vertical'),
-                'value': 'size-xl vertical'}]
+    options = [{'text': _('Small Rectangle (1x2)'), 'value': 'size-sm'},
+               {'text': _('Small Wide Rectangle (1x6)'),
+                   'value': 'size-sm wide'},
+               {'text': _('Medium Square (2x2)'), 'value': 'size-sm square'},
+               {'text': _('Medium Rectangle (2x3)'), 'value': 'size-lg'},
+               {'text': _('Large Rectangle (2x4)'),
+                   'value': 'size-sm double square'},
+               {'text': _('Extra Large Rectangle (2x6)'), 'value': 'size-xl'},
+               {'text': _('Large Square (4x4)'), 'value': 'size-lg square'},
+               {'text': _('Medium Vertical (4x2)'),
+                   'value': 'size-sm vertical'},
+               {'text': _('Large Vertical (4x3)'),
+                   'value': 'size-lg vertical'}]
     return options
 
 
@@ -466,6 +463,16 @@ def get_map_data(geojson_url, map_key_field, data_key_field,
         key = record[data_key_field.lower()]
         value = record[data_value_field.lower()]
 
+        # Make sure key is number when geojson keys are number:
+        try:
+            if isinstance(geojson_keys[0], (int, float)) and key.isdigit():
+                try:
+                    key = int(key)
+                except ValueError:
+                    key = float(key)
+        except Exception, e:
+            log.error(e)
+
         if key not in geojson_keys:
             continue
 
@@ -482,6 +489,7 @@ def get_map_data(geojson_url, map_key_field, data_key_field,
     return map_data
 
 
+@functools32.lru_cache(maxsize=128)
 def get_resource_data(sql_string):
 
     response = toolkit.get_action('datastore_search_sql')(
@@ -550,3 +558,55 @@ def allow_nav_bar():
     '''
     isAllowed = config.get('ckanext.querytool.allow_nav_bar', default=True)
     return isAllowed
+
+
+def parse_y_axis_columns(value):
+    # The input string can be:
+    # - falsy (None/empty/etc)
+    # - modern (as JSON of list of {name,alias})
+    # - legacy (as a comma separated string of column names)
+
+    # Falsy
+    if not value:
+        return []
+
+    # Modern
+    try:
+        columns = json.loads(value)
+        if not isinstance(columns, list):
+            raise TypeError()
+        return columns
+
+    # Legacy
+    except Exception:
+        names = value.split(',')
+        columns = map(lambda name: {'name': name, 'alias': ''}, names)
+        return columns
+
+
+def pick_first_by_attr_value(items, attr, value, default=False):
+    for item in items:
+        if item.get(attr) == value:
+            return item
+    return default
+
+
+def slugify(string):
+    string = string or ''
+    return re.sub(r'\W+', '_', string, flags=re.UNICODE).strip('_').lower()
+
+
+def parse_json(string):
+    return json.loads(string)
+
+
+def dump_json(value):
+    return json.dumps(value)
+
+
+def get_dataset_url_path(url):
+    # Remove http://host:port/lang part
+    parts = url.split('/dataset')
+    if len(parts) == 1:
+        return ''
+    return '/dataset%s' % parts[1]

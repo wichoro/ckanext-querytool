@@ -16,18 +16,18 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # http://packaging.python.org/en/latest/tutorial.html#version
-    version='0.0.1',
+    version='1.2a64',
 
     description='''CKAN extension that will provide data quering with
                                                 pre configured set of rules''',
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/duskobogdanovski/ckanext-querytool',
+    url='https://github.com/ViderumGlobal/ckanext-querytool',
 
     # Author details
-    author='''Viderum''',
-    author_email='''dbogdanovski@viderum.com''',
+    author='''Datopian''',
+    author_email='''info@datopian.com''',
 
     # Choose your license
     license='AGPL',

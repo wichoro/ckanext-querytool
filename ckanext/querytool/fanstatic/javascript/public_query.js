@@ -235,8 +235,14 @@
                 element.style.fill = "none";
                 element.style.stroke = "black";
             });
+            // fix references
+            d3.selectAll('.c3-ygrid-line.base line').attr("stroke", "grey");
 
             html2canvas(document.body, {
+              //fix images
+              ignoreElements: function(element) {
+                if (element.classList.contains('html2canvas-ignore')) return true;
+              },
             }).then(function(canvas) {
                 Canvas2Image.saveAsPNG(canvas);
             });
@@ -258,6 +264,7 @@
                 }
             });
             if (valid) {
+                $("#public-filters").attr('action', '#' + $(this).data('anchor'))
                 $("#public-filters").submit();
             } else {
                 //in the future display some error
@@ -272,5 +279,44 @@
             copyText.select();
             document.execCommand("Copy");
         });
+
+
     });
+
+    $(window).load(function(){
+      setTimeout(function() {
+        $("text.c3-title").each(function() {
+          useTitleAsHtml($(this));
+        })
+      }, 500);
+
+      setInterval(function() {
+        $("text.c3-title").each(function() {
+          useTitleAsHtml($(this));
+        })
+      }, 2000);
+    })
+
+    function useTitleAsHtml(titleObj) {
+      if (titleObj.html() !== '') {
+        var parentSvg = titleObj.parent();
+        var ns = 'http://www.w3.org/2000/svg';
+        var foreignObject = document.createElementNS( ns, 'foreignObject');
+        if ($(window).width() < 980) {
+          foreignObject.setAttribute('height', 28);
+        } else {
+          foreignObject.setAttribute('height', 36);
+        }
+        foreignObject.setAttribute('width', parentSvg.width());
+        var div = document.createElement('div');
+        div.setAttribute('class', 'c3-title title-splitted');
+        var trimmedTitle = $.trim(titleObj.html().replace(/[\t\n]+/g,' '));
+        div.setAttribute('title', trimmedTitle);
+        div.innerHTML = titleObj.html();
+        foreignObject.appendChild(div);
+        parentSvg.append(foreignObject);
+        titleObj.html('');
+      }
+    }
+
 })($);

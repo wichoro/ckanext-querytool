@@ -5,6 +5,7 @@ from ckan.lib.plugins import DefaultTranslation
 import ckanext.querytool.helpers as h
 from ckanext.querytool.model import setup as model_setup
 import ckanext.querytool.helpers as helpers
+from ckanext.querytool import actions
 
 
 class QuerytoolPlugin(plugins.SingletonPlugin, DefaultTranslation):
@@ -84,7 +85,9 @@ class QuerytoolPlugin(plugins.SingletonPlugin, DefaultTranslation):
     def get_actions(self):
         module_root = 'ckanext.querytool.logic.action'
         action_functions = h._get_functions(module_root)
-
+        action_functions['resource_delete'] = actions.resource_delete
+        action_functions['resource_patch'] = actions.resource_patch
+        action_functions['resource_update'] = actions.resource_update
         return action_functions
 
     # IConfigurable
@@ -135,7 +138,17 @@ class QuerytoolPlugin(plugins.SingletonPlugin, DefaultTranslation):
             'querytool_get_public_breadcrumb_name':
                 helpers.get_public_breadcrumb_name,
             'querytool_allow_nav_bar':
-                helpers.allow_nav_bar
+                helpers.allow_nav_bar,
+            'querytool_parse_y_axis_columns':
+                helpers.parse_y_axis_columns,
+            'querytool_pick_first_by_attr_value':
+                helpers.pick_first_by_attr_value,
+            'querytool_parse_json':
+                helpers.parse_json,
+            'querytool_dump_json':
+                helpers.dump_json,
+            'querytool_get_dataset_url_path':
+                helpers.get_dataset_url_path,
         }
 
     # IAuthFunctions

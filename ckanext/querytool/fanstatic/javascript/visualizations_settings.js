@@ -55,6 +55,7 @@
         }
 
         tick_count_name.change(function(event) {
+            // TODO: what doesn this code do and when; bad duplication?
             var selectValues = [{
                     'text': _('Decimal (1 digit) e.g 2.5'),
                     'value': '.1f'
@@ -72,7 +73,7 @@
                     'value': '.4f'
                 },
                 {
-                    'text': _('Dolar e.g 2000$'),
+                    'text': _('Currency e.g. $2,000'),
                     'value': '$'
                 },
                 {
@@ -80,17 +81,29 @@
                     'value': 's'
                 },
                 {
-                    'text': _('Percentage (multiply by 100) e.g 200000%'),
-                    'value': 'p'
+                    'text': _('Percentage (0 digit) e.g 25% for 0.25'),
+                    'value': '.0%'
                 },
                 {
-                    'text': _('Comma (thousands separator) e.g 2,000'),
-                    'value': ','
+                    'text': _('Percentage (1 digit) e.g 25.1% for 0.251'),
+                    'value': '.1%'
                 },
                 {
-                    'text': _('Binary e.g 11111010000'),
-                    'value': 'b'
-                }
+                    'text': _('Percentage (2 digit) e.g 25.12% for 0.2512'),
+                    'value': '.2%'
+                },
+                {
+                    'text': _('Comma thousands separator (0 digit) e.g 2,512'),
+                    'value': ',.0f'
+                },
+                {
+                    'text': _('Comma thousands separator (1 digit) e.g 2,512.3'),
+                    'value': ',.1f'
+                },
+                {
+                    'text': _('Comma thousands separator (2 digit) e.g 2,512.34'),
+                    'value': ',.2f'
+                },
             ]
 
             var elem = $(this);
@@ -218,12 +231,60 @@
         });
     };
 
+    function handleChartTitles () {
+      // Provide variables support for titles
+      $('.title textarea').change(function (ev) {
+        var env = nunjucks.configure({tags: {variableStart: '{', variableEnd: '}'}});
+        try {
+          env.renderString($(ev.target).val(), {});
+          ev.target.setCustomValidity('');
+        } catch (error) {
+          ev.target.setCustomValidity(_('Template is invalid'));
+        }
+      });
+      $('.title-vars select').change(function (ev) {
+        var select = $(ev.target);
+        var textarea = select.closest('.item-wrapper').find('.control-group.title textarea');
+        textarea.val(textarea.val() + select.val());
+        select.val('');
+      })
+    };
+
+    function handleMultipleSelect () {
+      $('[id*=chart_field_static_reference_columns_]')
+        // Skip already initialized
+        .not('.select2-container')
+        .not('.select2-offscreen')
+        // Enable multiple select vidget
+        .select2({
+          placeholder: _('Click to select one or more'),
+        })
+        // Validate on changes
+        .change(function (ev) {
+          var measures = [];
+          var static_reference_columns = $(this).val();
+          for (const value of static_reference_columns || []) {
+            const measure = value.split('|')[0];
+            const column = value.split('|')[1];
+            if (measures.includes(measure)) {
+              ev.target.setCustomValidity(
+                _('Static Reference Columns: maximum one column per measure'));
+              return;
+            }
+            measures.push(measure);
+          }
+          ev.target.setCustomValidity('');
+        })
+    };
+
     $(document).ready(function() {
         handleChartSortingField();
         handleRenderedVizFilters('chart');
         handleRenderedVizFilters('map');
         handleRenderedVizFilters('table');
         handleImageItems();
+        handleChartTitles();
+        handleMultipleSelect();
         var visualizationItems = $('#visualization-settings-items');
         var vizForm = $('#visualizations-form');
         var sqlString = vizForm.data('sqlString');
@@ -231,6 +292,7 @@
         var map_resource = vizForm.data('mapResource');
         var yAxisValues = vizForm.data('yAxisValues');
         var mainFiltersNames = vizForm.data('mainFiltersNames');
+        var infoQueryFilters = vizForm.data('mainFilters');
 
         var chooseYAxisColumn = $('#choose_y_axis_column');
         handleTickFormat();
@@ -274,6 +336,7 @@
             var item = $('.item');
             var items = item.length + 1;
             var axisYValue = chooseYAxisColumn.val();
+            var measureLabel = $('#choose_y_axis_column option:selected').text();
 
             if (visualization === 'chart') {
 
@@ -286,7 +349,9 @@
                         map_resource: map_resource,
                         sql_string: sqlString,
                         y_axis_values: yAxisValues,
-                        main_filters: mainFiltersNames
+                        main_filters: mainFiltersNames,
+                        info_query_filters: JSON.stringify(infoQueryFilters),
+                        measure_label: measureLabel,
                     })
                     .done(function(data) {
                         var item = visualizationItems.prepend(data);
@@ -294,9 +359,12 @@
                         handleRenderedVizFilters('chart', items);
                         handleItemsOrder();
                         handleChartSortingField();
+                        handleChartTitles();
+                        handleMultipleSelect();
                         var axisY = $('[name*=chart_field_axis_y_]');
                         axisY.val(axisYValue);
                         handleTickFormat(items);
+                        handleChartOptions();
                     });
             } else if (visualization === 'map') {
 
@@ -385,10 +453,13 @@
                     var selectTextRotationAxisX = item.find('[id*=chart_field_x_text_rotate_]');
                     var checkboxShowDataLabels = item.find('[id*=chart_field_labels_]');
                     var checkboxShowLegend = item.find('[id*=chart_field_legend_]');
+                    var checkboxShowValuesAsPercentages = item.find('[id*=chart_field_show_labels_as_percentages_]');
                     var inputTooltipName = item.find('[id*=chart_field_tooltip_name_]');
                     var selectDataFormat = item.find('[id*=chart_field_data_format_]');
                     var selectTickFormatAxisY = item.find('[id*=chart_field_y_ticks_format_]');
                     var inputLabelAxisY = item.find('[id*=chart_field_y_label_]');
+                    var inputYLabelHide = item.find('[id*=chart_field_y_label_hide_]');
+                    var inputYFromZero = item.find('[id*=chart_field_y_from_zero_]');
                     var inputPaddingTop = item.find('[id*=chart_field_padding_top_]');
                     var inputPaddingBottom = item.find('[id*=chart_field_padding_bottom_]');
                     var selectTickCount = item.find('[id*=chart_field_tick_count_]');
@@ -400,10 +471,16 @@
                     var selectFilterVAliasDiv = item.find('[id*=chart_div_filter_alias_]');
                     var selectFilterVisibility = item.find('[id*=chart_field_filter_visibility_]');
                     var selectFilterVisibilityDiv = item.find('[id*=chart_div_filter_visibility_]');
+                    var selectStaticReferenceColumns = item.find('[id*=chart_field_static_reference_columns_]');
+                    var inputStaticReferenceLabel = item.find('[id*=chart_field_static_reference_label_]');
+                    var selectDynamicReferenceType = item.find('[id*=chart_field_dynamic_reference_type_]');
+                    var inputDynamicReferenceFactor = item.find('[id*=chart_field_dynamic_reference_factor_]');
+                    var inputDynamicReferenceLabel = item.find('[id*=chart_field_dynamic_reference_label_]');
 
                     var inputChartPaddingLeft = item.find('[id*=chart_field_chart_padding_left_]');
                     var inputChartPaddingBottom = item.find('[id*=chart_field_chart_padding_bottom_]');
                     var checkboxXLabelMultiline = item.find('[id*=chart_field_x_text_multiline_]');
+                    var inputXTickCullingMax = item.find('[id*=chart_field_x_tick_culling_max_]');
 
                     var selectCategoryName = item.find('[id*=chart_field_category_name_]');
 
@@ -437,6 +514,9 @@
                     checkboxShowLegend.attr('id', 'chart_field_legend_' + order);
                     checkboxShowLegend.attr('name', 'chart_field_legend_' + order);
 
+                    checkboxShowValuesAsPercentages.attr('id', 'chart_field_show_labels_as_percentages_' + order);
+                    checkboxShowValuesAsPercentages.attr('name', 'chart_field_show_labels_as_percentages_' + order);
+
                     inputTooltipName.attr('id', 'chart_field_tooltip_name_' + order);
                     inputTooltipName.attr('name', 'chart_field_tooltip_name_' + order);
 
@@ -448,6 +528,12 @@
 
                     inputLabelAxisY.attr('id', 'chart_field_y_label_' + order);
                     inputLabelAxisY.attr('name', 'chart_field_y_label_' + order);
+
+                    inputYLabelHide.attr('id', 'chart_field_y_label_hide_' + order);
+                    inputYLabelHide.attr('name', 'chart_field_y_label_hide_' + order);
+
+                    inputYFromZero.attr('id', 'chart_field_y_from_zero_' + order);
+                    inputYFromZero.attr('name', 'chart_field_y_from_zero_' + order);
 
                     inputPaddingTop.attr('id', 'chart_field_padding_top_' + order);
                     inputPaddingTop.attr('name', 'chart_field_padding_top_' + order);
@@ -474,6 +560,21 @@
                     selectFilterVisibility.attr('name', 'chart_field_filter_visibility_' + order);
                     selectFilterVisibilityDiv.attr('id', 'chart_div_filter_visibility_' + order);
 
+                    selectStaticReferenceColumns.attr('id', 'chart_field_static_reference_columns_' + order);
+                    selectStaticReferenceColumns.attr('name', 'chart_field_static_reference_columns_' + order);
+
+                    inputStaticReferenceLabel.attr('id', 'chart_field_static_reference_label_' + order);
+                    inputStaticReferenceLabel.attr('name', 'chart_field_static_reference_label_' + order);
+
+                    selectDynamicReferenceType.attr('id', 'chart_field_dynamic_reference_type_' + order);
+                    selectDynamicReferenceType.attr('name', 'chart_field_dynamic_reference_type_' + order);
+
+                    inputDynamicReferenceFactor.attr('id', 'chart_field_dynamic_reference_factor_' + order);
+                    inputDynamicReferenceFactor.attr('name', 'chart_field_dynamic_reference_factor_' + order);
+
+                    inputDynamicReferenceLabel.attr('id', 'chart_field_dynamic_reference_label_' + order);
+                    inputDynamicReferenceLabel.attr('name', 'chart_field_dynamic_reference_label_' + order);
+
                     resourceId.attr('id', 'resource_id_' + order);
                     resourceId.attr('name', 'resource_id_' + order);
 
@@ -492,6 +593,9 @@
 
                     checkboxXLabelMultiline.attr('id', 'chart_field_x_text_multiline_' + order);
                     checkboxXLabelMultiline.attr('name', 'chart_field_x_text_multiline_' + order);
+
+                    inputXTickCullingMax.attr('id', 'chart_field_x_tick_culling_max_' + order);
+                    inputXTickCullingMax.attr('name', 'chart_field_x_tick_culling_max_' + order);
 
 
                 } else if (item.context.id.indexOf('text_box') >= 0) {
@@ -569,7 +673,9 @@
 
                 } else if (item.context.id.indexOf('table_item') >= 0) {
                     var table_size = item.find('[id*=table_size_]');
+                    var table_data_format = item.find('[id*=table_data_format_]');
                     var table_main_value = item.find('[id*=table_main_value_]');
+                    var table_category_name = item.find('[id*=table_category_name_]');
                     var table_title = item.find('[id*=table_field_title_]');
 
                     var selectTableFilterName = item.find('[id*=table_field_filter_name_]');
@@ -585,8 +691,14 @@
                     table_size.attr('id', 'table_size_' + order);
                     table_size.attr('name', 'table_size_' + order);
 
+                    table_data_format.attr('id', 'table_data_format_' + order);
+                    table_data_format.attr('name', 'table_data_format_' + order);
+
                     table_main_value.attr('id', 'table_main_value_' + order);
                     table_main_value.attr('name', 'table_main_value_' + order);
+
+                    table_category_name.attr('id', 'table_category_name_' + order);
+                    table_category_name.attr('name', 'table_category_name_' + order);
 
                     table_title.attr('id', 'table_field_title_' + order);
                     table_title.attr('name', 'table_field_title_' + order);
@@ -670,3 +782,91 @@
     }
 
 })(ckan.i18n.ngettext, $);
+
+$(document).on('show','.accordion', function (e) {
+    //$('.accordion-heading i').toggleClass(' ');
+    $(e.target).prev('.accordion-heading').addClass('accordion-opened');
+});
+
+$(document).on('hide','.accordion', function (e) {
+   $(this).find('.accordion-heading').not($(e.target)).removeClass('accordion-opened');
+   //$('.accordion-heading i').toggleClass('fa-chevron-right fa-chevron-down');
+});
+
+// Locate all chart type select elements and add change event listener:
+function handleChartOptions() {
+  $('select[id^=chart_field_graph_]').each(function() {
+    $(this).change(function() {
+      var id = $(this).attr('id');
+      // Handle 'category' option:
+      var categoryField = $('#chart_field_category_name_' + id[id.length - 1]);
+      if (['sbar', 'shbar', 'donut', 'pie'].includes($(this).val())) {
+        categoryField.prop('value', '');
+        categoryField.prop('disabled', true);
+      } else {
+        categoryField.prop('disabled', false);
+      }
+
+      // Handle 'Max number of text labels' option:
+      var xTickCullingMaxField = $('#chart_field_x_tick_culling_max_' + id[id.length - 1]);
+      if (['bar', 'hbar', 'sbar', 'shbar', 'pie', 'donut'].includes($(this).val())) {
+        xTickCullingMaxField.prop('disabled', true);
+      } else {
+        xTickCullingMaxField.prop('disabled', false);
+      }
+
+      // Handle 'Show labels as percentages' option:
+      // Handle chart options for pie and donut charts:
+      var showLabelsAsPercentagesField = $('#chart_field_show_labels_as_percentages_' + id[id.length - 1]);
+      var xTextRotateField = $('#chart_field_x_text_rotate_' + id[id.length - 1]);
+      var xTextMultilineField = $('#chart_field_x_text_multiline_' + id[id.length - 1]);
+      var yLabelField = $('#chart_field_y_label_' + id[id.length - 1]);
+      var yLabelHideField = $('#chart_field_y_label_hide_' + id[id.length - 1]);
+      var yFromZeroField = $('#chart_field_y_from_zero_' + id[id.length - 1]);
+      var yTicksFormatField = $('#chart_field_y_ticks_format_' + id[id.length - 1]);
+      var dataFormatField = $('#chart_field_data_format_' + id[id.length - 1]);
+      var labelsField = $('#chart_field_labels_' + id[id.length - 1]);
+      var staticReferenceColumnsField = $('#chart_field_static_reference_columns_' + id[id.length - 1]);
+      var staticReferenceLabelField = $('#chart_field_static_reference_label_' + id[id.length - 1]);
+      var dynamicReferenceTypeField = $('#chart_field_dynamic_reference_type_' + id[id.length - 1]);
+      var dynamicReferenceFactor = $('#chart_field_dynamic_reference_factor_' + id[id.length - 1]);
+      var dynamicReferenceLabel = $('#chart_field_dynamic_reference_label_' + id[id.length - 1]);
+      if (['pie', 'donut'].includes($(this).val())) {
+        showLabelsAsPercentagesField.prop('disabled', false);
+        xTextRotateField.prop('disabled', true);
+        xTextMultilineField.prop('disabled', true);
+        yLabelField.prop('disabled', true);
+        yLabelHideField.prop('disabled', true);
+        yFromZeroField.prop('disabled', true);
+        yTicksFormatField.prop('disabled', true);
+        dataFormatField.prop('disabled', true);
+        labelsField.prop('disabled', true);
+        staticReferenceColumnsField.prop('disabled', true);
+        staticReferenceLabelField.prop('disabled', true);
+        dynamicReferenceTypeField.prop('disabled', true);
+        dynamicReferenceFactor.prop('disabled', true);
+        dynamicReferenceLabel.prop('disabled', true);
+      } else {
+        showLabelsAsPercentagesField.prop('disabled', true);
+        showLabelsAsPercentagesField.prop('checked', false);
+        xTextRotateField.prop('disabled', false);
+        xTextMultilineField.prop('disabled', false);
+        yLabelField.prop('disabled', false);
+        yLabelHideField.prop('disabled', false);
+        yFromZeroField.prop('disabled', false);
+        yTicksFormatField.prop('disabled', false);
+        dataFormatField.prop('disabled', false);
+        labelsField.prop('disabled', false);
+        staticReferenceColumnsField.prop('disabled', false);
+        staticReferenceLabelField.prop('disabled', false);
+        dynamicReferenceTypeField.prop('disabled', false);
+        dynamicReferenceFactor.prop('disabled', false);
+        dynamicReferenceLabel.prop('disabled', false);
+      }
+    });
+  });
+};
+
+$(document).ready(function() {
+  handleChartOptions();
+});

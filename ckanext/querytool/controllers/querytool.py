@@ -114,15 +114,15 @@ class QueryToolController(base.BaseController):
 
         context = _get_context()
 
+        name = querytool[1:]
+
         try:
-            check_access('querytool_delete', context)
+            check_access('querytool_delete', context, {'name': name})
         except NotAuthorized:
             abort(403, _('Not authorized to see this page'))
 
-        id = querytool[1:]
-
         try:
-            junk = _get_action('querytool_delete', {'id': id})
+            junk = _get_action('querytool_delete', {'name': name})
         except NotFound:
             abort(404, _('Application not found'))
 
@@ -138,18 +138,19 @@ class QueryToolController(base.BaseController):
         :return: query create/edit template page
 
         '''
-        context = _get_context()
-        try:
-            check_access('querytool_update', context)
-        except NotAuthorized:
-            abort(403, _('Not authorized to see this page'))
-
         if querytool:
             querytool = querytool[1:]
 
         data_dict = {
             'name': querytool
         }
+
+        context = _get_context()
+        try:
+            check_access('querytool_update', context, data_dict)
+        except NotAuthorized:
+            abort(403, _('Not authorized to see this page'))
+
         _querytool = _get_action('querytool_get', data_dict)
 
         if _querytool is None and len(querytool) > 0:
@@ -189,8 +190,10 @@ class QueryToolController(base.BaseController):
                         data['data_filter_color_{}'.format(id)]
 
                     filters.append(filter)
-                elif k.startswith('y_axis_column_'):
-                    y_axis_columns.append(v)
+                elif k.startswith('y_axis_name_'):
+                    id = k.split('_')[-1]
+                    alias = data.get('y_axis_alias_%s' % id, '')
+                    y_axis_columns.append({'name': v, 'alias': alias})
 
                 elif k.startswith('related_querytool_'):
                     related_querytool = {}
@@ -220,8 +223,9 @@ class QueryToolController(base.BaseController):
             _querytool.update(data)
             _querytool['querytool'] = querytool
             _querytool['sql_string'] = sql_string
-            _querytool['y_axis_columns'] = ','.join(y_axis_columns)
-
+            _querytool['y_axis_columns'] = (
+                json.dumps(y_axis_columns) if y_axis_columns else '')
+            _querytool['owner_org'] = data['owner_org']
             try:
                 junk = _get_action('querytool_update', _querytool)
                 h.flash_success(_('Data Successfully updated.'))
@@ -262,8 +266,11 @@ class QueryToolController(base.BaseController):
         error_summary = error_summary or {}
 
         if _querytool.get('y_axis_columns'):
-            _querytool['y_axis_columns'] =\
-                _querytool.get('y_axis_columns').split(',')
+            _querytool['y_axis_columns'] = helpers.parse_y_axis_columns(
+                _querytool.get('y_axis_columns'))
+            _querytool['y_axis_names'] = map(
+                lambda column: column['name'],
+                _querytool['y_axis_columns'])
 
         vars = {'data': data, 'errors': errors,
                 'error_summary': error_summary,
@@ -279,19 +286,19 @@ class QueryToolController(base.BaseController):
 
         :return: query edit template page
         '''
-        context = _get_context()
-
-        try:
-            check_access('querytool_update', context)
-        except NotAuthorized:
-            abort(403, _('Not authorized to see this page'))
-
         if querytool:
             querytool = querytool[1:]
 
         data_dict = {
             'name': querytool
         }
+
+        context = _get_context()
+
+        try:
+            check_access('querytool_update', context, data_dict)
+        except NotAuthorized:
+            abort(403, _('Not authorized to see this page'))
 
         _querytool = _get_action('querytool_get', data_dict)
 
@@ -334,43 +341,56 @@ class QueryToolController(base.BaseController):
                     visualization['type'] = 'chart'
                     visualization['order'] = int(id)
                     visualization['graph'] = \
-                        data['chart_field_graph_{}'.format(id)]
+                        data.get('chart_field_graph_{}'.format(id))
                     visualization['x_axis'] = \
-                        data['chart_field_axis_x_{}'.format(id)]
+                        data.get('chart_field_axis_x_{}'.format(id))
                     visualization['y_axis'] = \
-                        data['chart_field_axis_y_{}'.format(id)]
+                        data.get('chart_field_axis_y_{}'.format(id))
                     visualization['color'] = \
-                        data['chart_field_color_{}'.format(id)]
+                        data.get('chart_field_color_{}'.format(id))
                     visualization['title'] = \
-                        data['chart_field_title_{}'.format(id)]
+                        data.get('chart_field_title_{}'.format(id))
                     visualization['x_text_rotate'] = \
-                        data['chart_field_x_text_rotate_{}'.format(id)]
+                        data.get('chart_field_x_text_rotate_{}'.format(id))
                     visualization['tooltip_name'] = \
-                        data['chart_field_tooltip_name_{}'.format(id)]
+                        data.get('chart_field_tooltip_name_{}'.format(id))
                     visualization['data_format'] = \
-                        data['chart_field_data_format_{}'.format(id)]
+                        data.get('chart_field_data_format_{}'.format(id))
                     visualization['y_tick_format'] = \
-                        data['chart_field_y_ticks_format_{}'.format(id)]
+                        data.get('chart_field_y_ticks_format_{}'.format(id))
                     visualization['padding_bottom'] = \
-                        data['chart_field_padding_bottom_{}'.format(id)]
+                        data.get('chart_field_padding_bottom_{}'.format(id))
                     visualization['padding_top'] = \
-                        data['chart_field_padding_top_{}'.format(id)]
+                        data.get('chart_field_padding_top_{}'.format(id))
                     visualization['tick_count'] = \
-                        data['chart_field_tick_count_{}'.format(id)]
+                        data.get('chart_field_tick_count_{}'.format(id))
                     visualization['y_label'] = \
-                        data['chart_field_y_label_{}'.format(id)]
+                        data.get('chart_field_y_label_{}'.format(id))
                     visualization['size'] = \
-                        data['chart_field_size_{}'.format(id)]
+                        data.get('chart_field_size_{}'.format(id))
                     visualization['chart_padding_left'] = \
-                        data['chart_field_chart_padding_left_{}'.format(id)]
+                        data.get('chart_field_chart_padding_left_{}'.format(id))
                     visualization['chart_padding_bottom'] = \
-                        data['chart_field_chart_padding_bottom_{}'.format(id)]
+                        data.get('chart_field_chart_padding_bottom_{}'.format(id))
+                    visualization['static_reference_columns'] = \
+                        toolkit.request.POST.getall(
+                            'chart_field_static_reference_columns_%s' % id)
+                    visualization['static_reference_label'] = \
+                        data.get('chart_field_static_reference_label_%s' % id)
+                    visualization['dynamic_reference_type'] = \
+                        data.get('chart_field_dynamic_reference_type_%s' % id)
+                    visualization['dynamic_reference_factor'] = \
+                        data.get('chart_field_dynamic_reference_factor_%s' % id)
+                    visualization['dynamic_reference_label'] = \
+                        data.get('chart_field_dynamic_reference_label_%s' % id)
                     visualization['sort'] = \
-                        data['chart_field_sort_{}'.format(id)]
+                        data.get('chart_field_sort_{}'.format(id))
                     if 'chart_field_x_text_multiline_{}'.format(id) in data:
                         visualization['x_text_multiline'] = 'true'
                     else:
                         visualization['x_text_multiline'] = 'false'
+                    visualization['x_tick_culling_max'] = \
+                        data.get('chart_field_x_tick_culling_max_{}'.format(id))
                     if 'chart_field_legend_{}'.format(id) in data:
                         visualization['show_legend'] = 'true'
                     else:
@@ -379,6 +399,18 @@ class QueryToolController(base.BaseController):
                         visualization['show_labels'] = 'true'
                     else:
                         visualization['show_labels'] = 'false'
+                    if 'chart_field_y_label_hide_{}'.format(id) in data:
+                        visualization['y_label_hide'] = 'true'
+                    else:
+                        visualization['y_label_hide'] = 'false'
+                    if 'chart_field_show_labels_as_percentages_{}'.format(id) in data:
+                        visualization['show_labels_as_percentages'] = 'true'
+                    else:
+                        visualization['show_labels_as_percentages'] = 'false'
+                    if 'chart_field_y_from_zero_{}'.format(id) in data:
+                        visualization['y_from_zero'] = 'true'
+                    else:
+                        visualization['y_from_zero'] = 'false'
                     if data['chart_field_filter_name_{}'.format(id)]:
                         visualization['filter_name'] = \
                             data['chart_field_filter_name_{}'.format(id)]
@@ -394,7 +426,7 @@ class QueryToolController(base.BaseController):
                         visualization['filter_alias'] = ''
                         visualization['filter_visibility'] = ''
 
-                    if data['chart_field_category_name_{}'.format(id)]:
+                    if 'chart_field_category_name_{}'.format(id) in data:
                         visualization['category_name'] = \
                                 data['chart_field_category_name_{}'.format(id)]
                     else:
@@ -492,6 +524,8 @@ class QueryToolController(base.BaseController):
                         data['table_main_value_{}'.format(id)]
                     table_item['title'] = \
                         data['table_field_title_{}'.format(id)]
+                    table_item['data_format'] = \
+                        data['table_data_format_{}'.format(id)]
                     if data['table_field_filter_name_{}'.format(id)]:
                         table_item['filter_name'] = \
                             data['table_field_filter_name_{}'.format(id)]
@@ -506,6 +540,12 @@ class QueryToolController(base.BaseController):
                         table_item['filter_value'] = ''
                         table_item['filter_alias'] = ''
                         table_item['filter_visibility'] = ''
+
+                    if data['table_category_name_{}'.format(id)]:
+                        table_item['category_name'] = \
+                                data['table_category_name_{}'.format(id)]
+                    else:
+                        table_item['category_name'] = ''
 
                     tables.append(table_item)
 
@@ -554,26 +594,35 @@ class QueryToolController(base.BaseController):
         data['y_axis_columns'] = _querytool.get('y_axis_columns')
         data['main_filters'] = _querytool.get('filters')
 
+        # Add slug to filters
+        main_filters = []
+        for filter in json.loads(data['main_filters']):
+            filter['slug'] = helpers.slugify(filter.get('alias', ''))
+            main_filters.append(filter)
+        data['main_filters'] = json.dumps(main_filters)
+
+        # This is required in order to exclude
+        # main filters in chart item filter options
+        main_filters_names = []
+        for filter in main_filters:
+            main_filters_names.append(filter['name'])
+        data['main_filters_names'] = ','.join(main_filters_names)
+
+        data['y_axis_columns'] = helpers.parse_y_axis_columns(
+            data.get('y_axis_columns'))
+
+        data['y_axis_options'] = map(
+            lambda column: {'value': column['name'], 'text': column['alias']},
+            data['y_axis_columns'])
+
         # We need y_axis_columns names in comma separated
         # format because ajax snippets only support String parameters
         # This parameter is used for removing
         # Y axis values from the rest of the
         #  filtering options and the X axis values in viz items
-        data['y_axis_values'] = data['y_axis_columns']
-
-        # This is required in order to exclude
-        # main filters in chart item filter options
-        main_filters_names = []
-        for filter in json.loads(data['main_filters']):
-            main_filters_names.append(filter['name'])
-        data['main_filters_names'] = ','.join(main_filters_names)
-
-        data['y_axis_columns'] = data['y_axis_columns'].split(',')
-
-        data['y_axis_columns'] = map(lambda column: {
-            'value': column,
-            'text': column
-        }, data['y_axis_columns'])
+        data['y_axis_values'] = ','.join(map(
+            lambda column: column['name'],
+            data['y_axis_columns']))
 
         vars = {'data': data, 'errors': errors,
                 'error_summary': error_summary}
@@ -608,11 +657,11 @@ class QueryToolController(base.BaseController):
         if not querytool:
             abort(404, _('Application not found.'))
 
-        # only sysadmins can access private querytool
+        # only sysadmins or organization members can access private querytool
         if querytool['private'] is True:
             context = _get_context()
             try:
-                check_access('querytool_show', context)
+                check_access('querytool_show', context, {'name': name})
             except NotAuthorized:
                 abort(403, _('Not authorized to see this page'))
 
@@ -698,6 +747,11 @@ class QueryToolController(base.BaseController):
                 q_item['public_filters'] = new_filters
                 q_item['public_filters'].sort(key=itemgetter('order'))
                 q_item['sql_string'] = related_sql_string
+
+                # Add slug to filters
+                for filter in new_filters:
+                    filter['slug'] = helpers.slugify(filter.get('alias', ''))
+
                 # Need this hack for chart filter
                 q_item['public_main_filters'] = json.dumps(new_filters)
 
@@ -707,11 +761,11 @@ class QueryToolController(base.BaseController):
                       extra_vars={'querytools': querytools})
 
     def querytool_download_data(self, name):
-        qs = request.query_string
-        file_format = qs.split('=')[1]
+        params = request.params
+        file_format = params['format']
+        sql_string = params['sql_string']
 
         query = _get_action('querytool_get', {'name': name})
-        sql_string = query['sql_string']
 
         data_dict = {
             'sql_string': sql_string,

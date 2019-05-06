@@ -33,8 +33,14 @@ def querytool_list_by_group(context, data_dict):
     # check_access('',
     #            context, data_dict)
     group = data_dict.get('group')
-
-    querytools = CkanextQueryTool.search(group=group)
+    # get a user's organizations:
+    user_orgs = ch.organizations_available('read')
+    querytools = []
+    if c.userobj.sysadmin:
+        querytools += CkanextQueryTool.search(group=group)
+    else:
+        for org in user_orgs:
+            querytools += CkanextQueryTool.search(group=group, owner_org=org['id'])
 
     out = []
 
@@ -58,6 +64,7 @@ def querytool_list_other(context, data_dict):
     for querytool in querytools:
         if querytool.group not in groups:
             querytool = table_dictize(querytool, context)
+            ch.user_in_org_or_group(querytool.get('owner_org'))
             out.append(querytool)
     return out
 
@@ -201,6 +208,8 @@ def querytool_get_chart_data(context, data_dict):
     if category:
         x = []
         x.append('x')
+        values = []
+        static_reference_values = []
 
         category_values = \
             sorted(h.get_filter_values(resource_id,
@@ -222,8 +231,28 @@ def querytool_get_chart_data(context, data_dict):
             x.append(value)
 
             for record in records:
-                categories_data[record[x_axis.lower()]]\
-                    .append(record[y_axis.lower()])
+                value = record[y_axis.lower()]
+                categories_data[record[x_axis.lower()]].append(value)
+                try:
+                    value = float(value)
+                    values.append(value)
+                except Exception:
+                    pass
+                if 'static_reference_column' in record:
+                    try:
+                        sr_value = float(record['static_reference_column'])
+                        static_reference_values.append(sr_value)
+                    except Exception:
+                        pass
+
+        if values:
+            categories_data['y_axis_max'] = max(values)
+            categories_data['y_axis_avg'] = sum(values)/len(values)
+            categories_data['y_axis_min'] = min(values)
+
+        if static_reference_values:
+            categories_data['static_reference_value'] = (
+                sum(static_reference_values) / len(static_reference_values))
 
         categories_data['x'] = x
         return categories_data
