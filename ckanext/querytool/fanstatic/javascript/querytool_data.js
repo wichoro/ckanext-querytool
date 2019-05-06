@@ -473,12 +473,12 @@
                         }
                     } else {
                         yAxisColumnsNotice.css('display', 'block');
-                        yAxisColumnsNotice.text(_('An error occured while getting columns.'));
+                        yAxisColumnsNotice.text(_('An error occurred while getting columns.'));
                     }
                 })
                 .error(function(error) {
                     yAxisColumnsNotice.css('display', 'block');
-                    yAxisColumnsNotice.text(_('An error occured while getting columns.'));
+                    yAxisColumnsNotice.text(_('An error occurred while getting columns.'));
                 });
         }
 
