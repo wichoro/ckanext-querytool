@@ -1,20 +1,35 @@
-<div role="main">
+<div role="main" id="vs-home-page">
   <div class="container">
     <div class="row row1">
       <div class="span6 col1">
-          {% block platform %}
-          <div class="box homepage-box">
-            <h1>{{ _('Portal Development Platform') }}</h1>
-            <span>
-               {{ _('The Portal Development Platform allows public health agencies to design applications that let the public explore and access a diverse range of health data sources. The Platform has a simple interface that minimizes the time dedicated to creating applications while providing the essential visual and interactive elements for public access to data. It was developed on opensource license with minimal technological requirements, minimizing the resources needed for its use and maintenance.') }}
-            </span>
-          </div>
-          {% endblock %}
+        {% block platform %}
+        <div class="box homepage-box">
+          <h1>{{ _('Portal Development Platform') }}</h1>
+          <span>
+            {{ _('The Portal Development Platform allows public health agencies
+            to design applications that let the public explore and access a
+            diverse range of health data sources. The Platform has a simple
+            interface that minimizes the time dedicated to creating applications
+            while providing the essential visual and interactive elements for
+            public access to data. It was developed on opensource license with
+            minimal technological requirements, minimizing the resources needed
+            for its use and maintenance.') }}
+          </span>
+        </div>
+        {% endblock %}
       </div>
       <div class="span6 col2">
-          {% block logos %}
-            <img src="/base/images/vs-logo-blue.jpg" alt="Vital Strategies" />
-          {% endblock %}
+        {% block logos %} {% if g.site_logo %}
+        <a class="logo" href="{{ h.url_for('home.index') }}"
+          ><img
+            src="{{ h.url_for_static_or_external(g.site_logo) }}"
+            alt="{
+                  { g.site_title }}"
+            title="{{ g.site_title }}"
+        /></a>
+        {% else %}
+        <img src="/base/images/vs-logo-blue.jpg" alt="Vital Strategies" />
+        {% endif %} {% endblock %}
       </div>
     </div>
       {% block instructions %}
@@ -42,6 +57,7 @@
                </ul>
             </div>
       </div>
-      {% endblock %}
+    </div>
+    {% endblock %}
   </div>
 </div>
